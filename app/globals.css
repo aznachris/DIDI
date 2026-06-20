@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f9fafb;
+  --foreground: #111827;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.input {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: box-shadow 0.15s;
+}
+
+.input:focus {
+  box-shadow: 0 0 0 2px #a5b4fc;
+}
+
+select.input {
+  background-color: white;
+}
