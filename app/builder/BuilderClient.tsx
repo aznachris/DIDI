@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
   PointerSensor, TouchSensor, useSensor, useSensors, useDroppable, useDraggable
@@ -98,6 +99,8 @@ export default function BuilderClient({ students, existingSlots, didiBlocks }: P
   const [saving, setSaving] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const router = useRouter()
 
   const activeStudents = useMemo(() => students.filter(s => s.active && s.sessionsPerWeek > 0), [students])
 
@@ -161,23 +164,36 @@ export default function BuilderClient({ students, existingSlots, didiBlocks }: P
 
   async function handleSave() {
     setSaving(true)
-    const today = new Date().toISOString().slice(0, 10)
-    const slots: Omit<RecurringSlot, 'id'>[] = gridSlots.map(gs => ({
-      studentId: gs.studentId,
-      day: gs.day,
-      startTime: minutesToTime(gs.startMins),
-      durationMins: gs.durationMins,
-      validFrom: today,
-      active: true,
-    }))
-    await fetch('/api/slots/replace', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(slots),
-    })
-    setSaving(false)
-    setSaveSuccess(true)
-    setTimeout(() => setSaveSuccess(false), 3000)
+    setSaveError('')
+    try {
+      const today = new Date().toISOString().slice(0, 10)
+      const slots: Omit<RecurringSlot, 'id'>[] = gridSlots.map(gs => ({
+        studentId: gs.studentId,
+        day: gs.day,
+        startTime: minutesToTime(gs.startMins),
+        durationMins: gs.durationMins,
+        validFrom: today,
+        active: true,
+      }))
+      const res = await fetch('/api/slots/replace', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(slots),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setSaveError(`Σφάλμα: ${err.error ?? res.status}`)
+      } else {
+        setSaveSuccess(true)
+        router.refresh()
+        setTimeout(() => setSaveSuccess(false), 3000)
+      }
+    } catch (e) {
+      setSaveError('Αποτυχία σύνδεσης')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const sensors = useSensors(
@@ -327,6 +343,9 @@ export default function BuilderClient({ students, existingSlots, didiBlocks }: P
             ← Επαναδημιούργηση
           </button>
           <div className="flex items-center gap-2">
+            {saveError && (
+              <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">{saveError}</span>
+            )}
             {summary.warnings > 0 && (
               <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
                 ⚠️ {summary.warnings} προειδοπ.
