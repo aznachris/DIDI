@@ -195,8 +195,10 @@ function routeDay(day: DayOfWeek, sessions: DaySession[], didiBlocks: DidiBlock[
       // Didi blocks check
       if (conflictsWithDidi(didiBlocks, day, earliest, earliest + dur)) continue
 
-      // Cost = total distance (nearest neighbor — minimize each hop)
-      const cost = dist
+      // Cost = earliest start time (primary) + distance as tiebreak
+      // This ensures students with early windows go first, avoiding being locked out later
+      // 1 km ≈ 3 min at 20km/h → convert dist to "time equivalent" for fair comparison
+      const cost = earliest * 10 + dist * 3
       if (cost < bestCost) {
         bestCost = cost
         bestIdx = i
@@ -213,6 +215,9 @@ function routeDay(day: DayOfWeek, sessions: DaySession[], didiBlocks: DidiBlock[
     const pref = preferredWindowFor(student, day)
     if (pref && (bestStart < pref.from || bestStart + dur > pref.to)) {
       warnings.push('Εκτός προτιμώμενης ώρας')
+    }
+    if (!pref && bestStart < 10 * 60) {
+      warnings.push('Πρωινή ώρα — χωρίς προτίμηση για αυτή την ημέρα')
     }
 
     route.push({ student, day, startMins: bestStart, durationMins: dur, warnings })

@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const ym: string = body.date.slice(0, 7)
   const lessons = await getLessons(ym)
-  const lesson: Lesson = { ...body, id: newId(), createdAt: new Date().toISOString(), status: 'scheduled' }
+  const lesson: Lesson = { ...body, id: newId(), createdAt: new Date().toISOString() }
   lessons.push(lesson)
   await saveLessons(ym, lessons)
   return NextResponse.json(lesson, { status: 201 })

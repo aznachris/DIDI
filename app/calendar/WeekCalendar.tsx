@@ -7,6 +7,7 @@ import {
   lessonEndTime, formatMoney, minutesToTime
 } from '@/lib/utils'
 import LessonModal from './LessonModal'
+import SlotModal from './SlotModal'
 
 const HOUR_START = 8
 const HOUR_END = 21
@@ -35,6 +36,7 @@ interface Props {
 export default function WeekCalendar({ students, slots, lessons, today, initialWeekStart }: Props) {
   const [weekStart, setWeekStart] = useState(initialWeekStart)
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
+  const [selectedSlot, setSelectedSlot] = useState<{ slot: RecurringSlot; date: string } | null>(null)
   const [localLessons, setLocalLessons] = useState<Lesson[]>(lessons)
 
   const studentMap = useMemo(() => Object.fromEntries(students.map(s => [s.id, s])), [students])
@@ -65,6 +67,26 @@ export default function WeekCalendar({ students, slots, lessons, today, initialW
     [localLessons, weekStart]
   )
 
+  // Virtual slot entries: recurring slots with no matching real lesson this week
+  interface SlotEntry { date: string; slot: RecurringSlot }
+  const weekSlotEntries = useMemo((): SlotEntry[] => {
+    const result: SlotEntry[] = []
+    for (const { day, date } of weekDays) {
+      for (const slot of slots) {
+        if (!slot.active) continue
+        if (slot.day !== day) continue
+        if (date < slot.validFrom) continue
+        if (slot.validUntil && date > slot.validUntil) continue
+        const covered = weekLessons.some(l =>
+          l.date === date &&
+          (l.recurringSlotId === slot.id || (l.studentId === slot.studentId && l.startTime === slot.startTime))
+        )
+        if (!covered) result.push({ date, slot })
+      }
+    }
+    return result
+  }, [slots, weekDays, weekLessons])
+
   function prevWeek() { setWeekStart(addDays(weekStart, -7)) }
   function nextWeek() { setWeekStart(addDays(weekStart, 7)) }
   function goToday() {
@@ -87,6 +109,10 @@ export default function WeekCalendar({ students, slots, lessons, today, initialW
   function handleLessonUpdate(updated: Lesson) {
     setLocalLessons(prev => prev.map(l => l.id === updated.id ? updated : l))
     setSelectedLesson(null)
+  }
+
+  function handleLessonCreated(created: Lesson) {
+    setLocalLessons(prev => [...prev, created])
   }
 
   const weekLabel = (() => {
@@ -142,6 +168,7 @@ export default function WeekCalendar({ students, slots, lessons, today, initialW
           {/* Day columns */}
           {weekDays.map(({ day, date }) => {
             const dayLessons = weekLessons.filter(l => l.date === date && l.status !== 'cancelled_student' && l.status !== 'cancelled_didi')
+            const daySlots = weekSlotEntries.filter(e => e.date === date)
             return (
               <div
                 key={day}
@@ -156,7 +183,29 @@ export default function WeekCalendar({ students, slots, lessons, today, initialW
                   />
                 ))}
 
-                {/* Lessons */}
+                {/* Virtual recurring slots (no real lesson record yet) */}
+                {daySlots.map(({ slot }) => {
+                  const student = studentMap[slot.studentId]
+                  const color = colorMap[slot.studentId] ?? 'bg-gray-100 border-gray-300 text-gray-700'
+                  const style = positionStyle(slot.startTime, slot.durationMins)
+                  const endTime = lessonEndTime(slot.startTime, slot.durationMins)
+                  const earned = student ? formatMoney(student.ratePerHour * slot.durationMins / 60) : ''
+                  return (
+                    <button
+                      key={slot.id}
+                      onClick={() => setSelectedSlot({ slot, date })}
+                      className={`absolute left-0.5 right-0.5 rounded border-2 border-dashed text-left px-1 overflow-hidden opacity-75 hover:opacity-100 transition-opacity ${color}`}
+                      style={style}
+                      title="Πάτα για να καταχωρήσεις"
+                    >
+                      <p className="text-[10px] font-bold leading-tight truncate">{student?.name ?? '—'}</p>
+                      <p className="text-[9px] opacity-70">{slot.startTime}–{endTime}</p>
+                      <p className="text-[9px] font-medium">{earned}</p>
+                    </button>
+                  )
+                })}
+
+                {/* Confirmed lessons */}
                 {dayLessons.map(lesson => {
                   const student = studentMap[lesson.studentId]
                   const color = colorMap[lesson.studentId]
@@ -188,6 +237,20 @@ export default function WeekCalendar({ students, slots, lessons, today, initialW
           student={studentMap[selectedLesson.studentId]}
           onClose={() => setSelectedLesson(null)}
           onUpdate={handleLessonUpdate}
+        />
+      )}
+
+      {/* Virtual slot modal */}
+      {selectedSlot && (
+        <SlotModal
+          slot={selectedSlot.slot}
+          date={selectedSlot.date}
+          student={studentMap[selectedSlot.slot.studentId]}
+          weekStart={weekStart}
+          allSlots={slots}
+          weekLessons={weekLessons}
+          onClose={() => setSelectedSlot(null)}
+          onCreated={lesson => { handleLessonCreated(lesson); setSelectedSlot(null) }}
         />
       )}
     </div>
