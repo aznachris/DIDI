@@ -47,10 +47,10 @@ export default function ScheduleClient({ students, initialSlots }: Props) {
   }
 
   return (
-    <div className="p-4 max-w-2xl mx-auto">
+    <div className="p-4 pb-24 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-gray-800">Εβδομαδιαίο Πρόγραμμα</h1>
-        <button onClick={() => setShowForm(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold">
+        <button onClick={() => setShowForm(true)} className="btn-primary px-4 py-2 text-sm">
           + Slot
         </button>
       </div>
@@ -152,7 +152,7 @@ export default function ScheduleClient({ students, initialSlots }: Props) {
               <button
                 onClick={handleAdd}
                 disabled={saving || !form.studentId}
-                className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50"
+                className="flex-1 py-2.5 btn-primary text-sm disabled:opacity-50"
               >
                 {saving ? 'Αποθήκευση...' : 'Προσθήκη'}
               </button>

@@ -23,8 +23,9 @@ export interface Student {
   preferred: TimeWindow[]    // soft: respect when possible
   unavailable: TimeWindow[]  // hard: never schedule here
   // Weekly schedule config
-  sessionsPerWeek: number    // e.g. 2
-  sessionDurationMins: number // e.g. 60
+  sessionsPerWeek: number      // e.g. 2
+  sessionDurationMins: number  // e.g. 60
+  minDaysBetweenSessions: number // e.g. 2 — min calendar days between any two sessions
   createdAt: string
   active: boolean
 }

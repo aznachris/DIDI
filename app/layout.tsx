@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#4f46e5',
+  themeColor: '#1a0d00',
   width: 'device-width',
   initialScale: 1,
 }
@@ -19,9 +19,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="el">
-      <body className={`${geist.className} bg-gray-50 min-h-screen`}>
+      <body className={geist.className} style={{ background: 'var(--bg)', minHeight: '100svh' }}>
         <Nav />
-        <main className="pb-20">{children}</main>
+        <main>{children}</main>
       </body>
     </html>
   )

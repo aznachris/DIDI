@@ -122,13 +122,13 @@ export default function WeekCalendar({ students, slots, lessons, today, initialW
   })()
 
   return (
-    <div className="flex flex-col h-screen max-h-screen">
+    <div className="flex flex-col" style={{ height: '100svh' }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200 sticky top-0 z-30">
+      <div className="flex items-center justify-between px-4 py-3 bg-white border-b sticky top-0 z-30" style={{ borderColor: 'var(--border)' }}>
         <button onClick={prevWeek} className="text-gray-500 px-2 py-1 text-lg">‹</button>
         <div className="text-center">
           <p className="text-sm font-semibold text-gray-800">{weekLabel}</p>
-          <button onClick={goToday} className="text-xs text-indigo-600 underline">Σήμερα</button>
+          <button onClick={goToday} className="text-xs underline" style={{ color: 'var(--brand)' }}>Σήμερα</button>
         </div>
         <button onClick={nextWeek} className="text-gray-500 px-2 py-1 text-lg">›</button>
       </div>
@@ -139,10 +139,10 @@ export default function WeekCalendar({ students, slots, lessons, today, initialW
         {weekDays.map(({ day, date, label }) => (
           <div
             key={day}
-            className={`col-span-1 text-center py-2 ${date === today ? 'bg-indigo-50' : ''}`}
+            className={`col-span-1 text-center py-2 ${date === today ? 'bg-orange-50' : ''}`}
           >
             <p className="text-[10px] text-gray-400 uppercase">{label.slice(0, 3)}</p>
-            <p className={`text-sm font-bold ${date === today ? 'text-indigo-600' : 'text-gray-700'}`}>
+            <p className={`text-sm font-bold ${date === today ? 'text-orange-600' : 'text-gray-700'}`}>
               {new Date(date + 'T00:00:00').getDate()}
             </p>
           </div>
@@ -150,7 +150,7 @@ export default function WeekCalendar({ students, slots, lessons, today, initialW
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pb-16">
         <div className="grid grid-cols-8" style={{ height: `${SLOT_HEIGHT}px`, position: 'relative' }}>
           {/* Hour lines + labels */}
           <div className="col-span-1 relative">
@@ -172,7 +172,7 @@ export default function WeekCalendar({ students, slots, lessons, today, initialW
             return (
               <div
                 key={day}
-                className={`col-span-1 relative border-l border-gray-100 ${date === today ? 'bg-indigo-50/40' : ''}`}
+                className={`col-span-1 relative border-l border-gray-100 ${date === today ? 'bg-orange-50/40' : ''}`}
               >
                 {/* Hour lines */}
                 {Array.from({ length: HOUR_END - HOUR_START }, (_, i) => (
@@ -237,6 +237,11 @@ export default function WeekCalendar({ students, slots, lessons, today, initialW
           student={studentMap[selectedLesson.studentId]}
           onClose={() => setSelectedLesson(null)}
           onUpdate={handleLessonUpdate}
+          onCreated={handleLessonCreated}
+          weekStart={weekStart}
+          allSlots={slots}
+          weekLessons={weekLessons}
+          students={students}
         />
       )}
 

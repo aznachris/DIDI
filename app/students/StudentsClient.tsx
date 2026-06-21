@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { Student, Level, AgeGroup, TimeWindow, DayOfWeek } from '@/lib/types'
 import { LEVEL_COLORS, DAY_LABELS, DAYS_ORDER, formatMoney } from '@/lib/utils'
+import TimePicker from '@/components/TimePicker'
 
 const LEVELS: Level[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']
 const AGE_GROUPS: { value: AgeGroup; label: string }[] = [
@@ -21,6 +22,7 @@ const emptyForm = {
   notes: '',
   sessionsPerWeek: 2,
   sessionDurationMins: 60,
+  minDaysBetweenSessions: 2,
   preferred: [] as TimeWindow[],
   unavailable: [] as TimeWindow[],
 }
@@ -39,12 +41,16 @@ export default function StudentsClient({ initialStudents }: Props) {
   const [activeTab, setActiveTab] = useState<'preferred' | 'unavailable'>('preferred')
   const [geocoding, setGeocoding] = useState(false)
 
+  // Geocoding state
+  const [geoStatus, setGeoStatus] = useState<'idle' | 'loading' | 'found' | 'notfound'>('idle')
+  const [geoLabel, setGeoLabel] = useState('')
+  const [geoTimer, setGeoTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
+
   const missingGeo = students.filter(s => !s.lat || !s.lng).length
 
   async function handleGeocodeAll() {
     setGeocoding(true)
     await fetch('/api/students/geocode-all', { method: 'POST' })
-    // Reload students
     const res = await fetch('/api/students')
     setStudents(await res.json())
     setGeocoding(false)
@@ -55,6 +61,7 @@ export default function StudentsClient({ initialStudents }: Props) {
     setForm(emptyForm)
     setShowForm(true)
     setActiveTab('preferred')
+    setGeoStatus('idle')
   }
 
   function openEdit(s: Student) {
@@ -68,11 +75,32 @@ export default function StudentsClient({ initialStudents }: Props) {
       notes: s.notes ?? '',
       sessionsPerWeek: s.sessionsPerWeek ?? 2,
       sessionDurationMins: s.sessionDurationMins ?? 60,
+      minDaysBetweenSessions: s.minDaysBetweenSessions ?? 2,
       preferred: s.preferred ?? [],
       unavailable: s.unavailable ?? [],
     })
     setShowForm(true)
     setActiveTab('preferred')
+    setGeoStatus('idle')
+  }
+
+  function handleAddressChange(val: string) {
+    setForm(p => ({ ...p, address: val }))
+    setGeoStatus('idle')
+    if (geoTimer) clearTimeout(geoTimer)
+    if (val.trim().length < 5) return
+    const timer = setTimeout(async () => {
+      setGeoStatus('loading')
+      const res = await fetch(`/api/geocode?address=${encodeURIComponent(val)}`, { credentials: 'include' })
+      const data = await res.json()
+      if (data.found) {
+        setGeoStatus('found')
+        setGeoLabel(data.locationLabel)
+      } else {
+        setGeoStatus('notfound')
+      }
+    }, 700)
+    setGeoTimer(timer)
   }
 
   async function handleSave() {
@@ -129,10 +157,10 @@ export default function StudentsClient({ initialStudents }: Props) {
     ((s.sessionsPerWeek ?? 1) * (s.sessionDurationMins ?? 60) / 60).toFixed(1)
 
   return (
-    <div className="p-4 max-w-2xl mx-auto">
+    <div className="p-4 pb-24 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-gray-800">Μαθητές</h1>
-        <button onClick={openNew} className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-semibold">
+        <button onClick={openNew} className="btn-primary px-4 py-2 text-sm">
           + Νέος
         </button>
       </div>
@@ -181,7 +209,7 @@ export default function StudentsClient({ initialStudents }: Props) {
                 </p>
                 <div className="flex gap-3 mt-1">
                   <p className="text-sm font-medium text-green-700">{formatMoney(s.ratePerHour)}/ώρα</p>
-                  <p className="text-sm text-indigo-600">
+                  <p className="text-sm text-orange-600">
                     {s.sessionsPerWeek ?? 1}× {s.sessionDurationMins ?? 60}λ/εβδ
                     <span className="text-gray-400 ml-1">({totalHoursPerWeek(s)}h)</span>
                   </p>
@@ -189,7 +217,7 @@ export default function StudentsClient({ initialStudents }: Props) {
                 {s.notes && <p className="text-xs text-gray-400 mt-1">{s.notes}</p>}
               </div>
               <div className="flex gap-2 ml-2 shrink-0">
-                <button onClick={() => openEdit(s)} className="text-indigo-600 text-sm hover:underline">Επεξ.</button>
+                <button onClick={() => openEdit(s)} className="text-orange-600 text-sm hover:underline">Επεξ.</button>
                 <button onClick={() => handleDelete(s.id)} className="text-red-500 text-sm hover:underline">Διαγρ.</button>
               </div>
             </div>
@@ -206,7 +234,6 @@ export default function StudentsClient({ initialStudents }: Props) {
             <h2 className="text-lg font-bold mb-4">{editing ? 'Επεξεργασία' : 'Νέος Μαθητής'}</h2>
 
             <div className="space-y-3">
-              {/* Basic info */}
               <input
                 value={form.name}
                 onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
@@ -215,10 +242,19 @@ export default function StudentsClient({ initialStudents }: Props) {
               />
               <input
                 value={form.address}
-                onChange={e => setForm(p => ({ ...p, address: e.target.value }))}
-                placeholder="Διεύθυνση (π.χ. Κεφαληνίας 15, Αθήνα)"
+                onChange={e => handleAddressChange(e.target.value)}
+                placeholder="Διεύθυνση (π.χ. Κεφαληνίας 15, Κυψέλη)"
                 className="input"
               />
+              {geoStatus === 'loading' && (
+                <p className="text-xs text-slate-400 -mt-1 px-1">🔍 Ψάχνω στο χάρτη...</p>
+              )}
+              {geoStatus === 'found' && (
+                <p className="text-xs text-emerald-600 -mt-1 px-1">✅ Βρέθηκε: {geoLabel}</p>
+              )}
+              {geoStatus === 'notfound' && (
+                <p className="text-xs text-red-500 -mt-1 px-1">❌ Δεν βρέθηκε — δοκίμασε πιο λεπτομερή διεύθυνση</p>
+              )}
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
@@ -245,9 +281,8 @@ export default function StudentsClient({ initialStudents }: Props) {
                 </div>
               </div>
 
-              {/* Sessions config */}
-              <div className="bg-indigo-50 rounded-xl p-3">
-                <p className="text-xs font-semibold text-indigo-700 mb-2">Εβδομαδιαίο Πρόγραμμα</p>
+              <div className="bg-orange-50 rounded-xl p-3">
+                <p className="text-xs font-semibold text-orange-700 mb-2">Εβδομαδιαίο Πρόγραμμα</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="text-xs text-gray-500 mb-1 block">Sessions/εβδ.</label>
@@ -264,18 +299,31 @@ export default function StudentsClient({ initialStudents }: Props) {
                     </select>
                   </div>
                 </div>
-                <p className="text-xs text-indigo-500 mt-2">
+                <div className="mt-2">
+                  <label className="text-xs text-gray-500 mb-1 block">
+                    Ελάχ. μέρες μεταξύ sessions
+                    <span className="text-gray-400 ml-1">(για μελέτη)</span>
+                  </label>
+                  <select value={form.minDaysBetweenSessions}
+                    onChange={e => setForm(p => ({ ...p, minDaysBetweenSessions: Number(e.target.value) }))}
+                    className="input">
+                    <option value={1}>1 μέρα</option>
+                    <option value={2}>2 μέρες (προτεινόμενο)</option>
+                    <option value={3}>3 μέρες</option>
+                    <option value={4}>4+ μέρες</option>
+                  </select>
+                </div>
+                <p className="text-xs text-orange-500 mt-2">
                   Σύνολο: {((form.sessionsPerWeek * form.sessionDurationMins) / 60).toFixed(1)}h/εβδ ·{' '}
                   {formatMoney(form.sessionsPerWeek * form.sessionDurationMins / 60 * form.ratePerHour * 4.33)}/μήνα
                 </p>
               </div>
 
-              {/* Availability tabs */}
               <div>
                 <div className="flex border-b border-gray-200 mb-3">
                   <button
                     onClick={() => setActiveTab('preferred')}
-                    className={`px-4 py-2 text-sm font-medium ${activeTab === 'preferred' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-400'}`}
+                    className={`px-4 py-2 text-sm font-medium ${activeTab === 'preferred' ? 'border-b-2 border-orange-600 text-orange-600' : 'text-gray-400'}`}
                   >
                     Προτιμώμενες ώρες
                   </button>
@@ -291,7 +339,7 @@ export default function StudentsClient({ initialStudents }: Props) {
                   {DAYS_ORDER.map(day => {
                     const window = form[activeTab].find(a => a.day === day)
                     const color = activeTab === 'preferred'
-                      ? 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                      ? 'bg-orange-50 border-orange-300 text-orange-700'
                       : 'bg-red-50 border-red-300 text-red-700'
                     return (
                       <div key={day} className="flex items-center gap-2">
@@ -306,13 +354,9 @@ export default function StudentsClient({ initialStudents }: Props) {
                         </button>
                         {window && (
                           <>
-                            <input type="time" value={window.from}
-                              onChange={e => updateWindow(activeTab, day, 'from', e.target.value)}
-                              className="text-xs border border-gray-200 rounded-lg px-2 py-1 w-24" />
-                            <span className="text-xs text-gray-400">–</span>
-                            <input type="time" value={window.to}
-                              onChange={e => updateWindow(activeTab, day, 'to', e.target.value)}
-                              className="text-xs border border-gray-200 rounded-lg px-2 py-1 w-24" />
+                            <TimePicker value={window.from} onChange={val => updateWindow(activeTab, day, 'from', val)} />
+                            <span className="text-xs text-slate-400">–</span>
+                            <TimePicker value={window.to} onChange={val => updateWindow(activeTab, day, 'to', val)} />
                           </>
                         )}
                       </div>
@@ -337,7 +381,7 @@ export default function StudentsClient({ initialStudents }: Props) {
               <button
                 onClick={handleSave}
                 disabled={saving || !form.name || !form.address}
-                className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50"
+                className="flex-1 py-2.5 btn-primary text-sm disabled:opacity-50"
               >
                 {saving ? 'Αποθήκευση...' : 'Αποθήκευση'}
               </button>

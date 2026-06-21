@@ -85,7 +85,7 @@ function DroppableCell({ id, isOccupied, isUnavailable }: {
       style={{ height: CELL_H }}
       className={`
         border-t border-gray-100 relative transition-colors
-        ${isOver && !isOccupied ? 'bg-indigo-50' : ''}
+        ${isOver && !isOccupied ? 'bg-orange-50' : ''}
         ${isUnavailable ? 'bg-red-50/40' : ''}
       `}
     />
@@ -289,7 +289,7 @@ export default function BuilderClient({ students, existingSlots, didiBlocks }: P
   // ── Generate phase ────────────────────────────────────────
   if (phase === 'generate') {
     return (
-      <div className="p-4 max-w-2xl mx-auto">
+      <div className="p-4 pb-24 max-w-2xl mx-auto">
         <h1 className="text-xl font-bold text-gray-800 mb-2">Δημιουργία Προγράμματος</h1>
         <p className="text-sm text-gray-500 mb-6">
           Ο αλγόριθμος θα δημιουργήσει το βέλτιστο εβδομαδιαίο πρόγραμμα βάσει constraints και γεωγραφικής εγγύτητας.
@@ -323,7 +323,7 @@ export default function BuilderClient({ students, existingSlots, didiBlocks }: P
           <button
             onClick={handleGenerate}
             disabled={generating}
-            className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-base disabled:opacity-50 transition-colors"
+            className="w-full py-4 btn-primary text-base disabled:opacity-50"
           >
             {generating ? '⚙️ Υπολογισμός...' : '✨ Δημιούργησε Πρόγραμμα'}
           </button>
@@ -357,7 +357,7 @@ export default function BuilderClient({ students, existingSlots, didiBlocks }: P
             <button
               onClick={handleSave}
               disabled={saving}
-              className="bg-indigo-600 text-white text-sm px-4 py-1.5 rounded-xl font-semibold disabled:opacity-50"
+              className="btn-primary text-sm px-4 py-1.5 disabled:opacity-50"
             >
               {saving ? 'Αποθήκευση...' : saveSuccess ? '✓ Αποθηκεύτηκε!' : 'Αποθήκευση'}
             </button>

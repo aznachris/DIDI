@@ -28,10 +28,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-50">
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="text-5xl mb-3">📚</div>
+          <div className="text-5xl mb-3">🐈</div>
           <h1 className="text-2xl font-bold text-gray-800">Didi Scheduler</h1>
           <p className="text-sm text-gray-500 mt-1">Πρόγραμμα & Οικονομικά</p>
         </div>
@@ -41,14 +41,14 @@ export default function LoginPage() {
             value={password}
             onChange={e => setPassword(e.target.value)}
             placeholder="Κωδικός"
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-orange-400"
             autoFocus
           />
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
           <button
             type="submit"
             disabled={loading || !password}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl py-3 font-semibold transition-colors"
+            className="w-full btn-primary disabled:opacity-50 py-3"
           >
             {loading ? 'Σύνδεση...' : 'Είσοδος'}
           </button>

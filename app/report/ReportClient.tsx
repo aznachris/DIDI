@@ -181,7 +181,7 @@ export default function ReportClient({ students, slots, initialLessons, initialM
   const monthLabel = `${MONTH_NAMES[m - 1]} ${y}`
 
   return (
-    <div className="p-4 max-w-2xl mx-auto">
+    <div className="p-4 pb-24 max-w-2xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <button onClick={prevMonth} className="text-gray-500 px-2 py-1 text-lg">‹</button>
         <h1 className="text-xl font-bold text-gray-800">{monthLabel}</h1>
@@ -212,7 +212,7 @@ export default function ReportClient({ students, slots, initialLessons, initialM
           </div>
           <div className="grid grid-cols-2 gap-3 mb-6">
             <div className="bg-white rounded-2xl p-4 text-center border border-gray-100">
-              <p className="text-2xl font-bold text-indigo-600">{totalSessions}</p>
+              <p className="text-2xl font-bold text-orange-600">{totalSessions}</p>
               <p className="text-xs text-gray-400 mt-1">Μαθήματα</p>
             </div>
             <div className="bg-white rounded-2xl p-4 text-center border border-gray-100">

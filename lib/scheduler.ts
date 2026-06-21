@@ -3,6 +3,14 @@ import { timeToMinutes, minutesToTime } from './utils'
 
 // ── Config ────────────────────────────────────────────────
 const DAYS: DayOfWeek[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
+const DAY_INDEX: Record<DayOfWeek, number> = {
+  MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6,
+}
+
+// Calendar distance between two days (non-circular, within the same week)
+function dayGap(a: DayOfWeek, b: DayOfWeek): number {
+  return Math.abs(DAY_INDEX[a] - DAY_INDEX[b])
+}
 const DAY_START = 8 * 60   // 8:00
 const DAY_END   = 22 * 60  // 22:00
 const AVG_SPEED_KMH = 20
@@ -89,7 +97,7 @@ function assignDays(students: Student[], didiBlocks: DidiBlock[]): SessionAssign
   for (const student of sorted) {
     const needed = student.sessionsPerWeek
     const dur = student.sessionDurationMins
-    let placed = 0
+    const minGap = student.minDaysBetweenSessions ?? 2
 
     // Try each session
     for (let session = 0; session < needed; session++) {
@@ -97,44 +105,52 @@ function assignDays(students: Student[], didiBlocks: DidiBlock[]): SessionAssign
         .filter(a => a.studentId === student.id)
         .map(a => a.day)
 
-      let bestDay: DayOfWeek | null = null
-      let bestScore = -Infinity
+      // scoreDay: returns score for a candidate day, or null if hard-blocked
+      function scoreDay(day: DayOfWeek, enforceGap: boolean): number | null {
+        if (alreadyUsedDays.includes(day)) return null
+        if (isHardUnavailable(student, day, DAY_START, DAY_END)) return null
+        if (conflictsWithDidi(didiBlocks, day, DAY_START, DAY_END)) return null
 
-      for (const day of DAYS) {
-        if (alreadyUsedDays.includes(day)) continue
-        if (isHardUnavailable(student, day, DAY_START, DAY_END)) continue
-        if (conflictsWithDidi(didiBlocks, day, DAY_START, DAY_END)) continue
+        // Enforce minimum gap between sessions
+        if (enforceGap && alreadyUsedDays.some(d => dayGap(d, day) < minGap)) return null
 
         const dayAssignments = assignments.filter(a => a.day === day)
-
         let score = 0
 
-        // Preferred day bonus
         if (student.preferred.some(p => p.day === day)) score += 20
 
-        // Geographic clustering: how close is this student to others already on this day?
         if (dayAssignments.length > 0) {
           const assignedStudents = dayAssignments.map(a =>
             students.find(s => s.id === a.studentId)!
           ).filter(Boolean)
-          const avgDist = assignedStudents.reduce((sum, s) => {
-            return sum + distBetween(student, s)
-          }, 0) / assignedStudents.length
-          score += Math.max(0, 15 - avgDist * 3) // closer = +15, far = 0
+          const avgDist = assignedStudents.reduce((sum, s) => sum + distBetween(student, s), 0) / assignedStudents.length
+          score += Math.max(0, 15 - avgDist * 3)
         }
 
-        // Slight preference for days with fewer total sessions (balance the week)
         score -= dayAssignments.length * 2
+        return score
+      }
 
-        if (score > bestScore) {
-          bestScore = score
-          bestDay = day
+      let bestDay: DayOfWeek | null = null
+      let bestScore = -Infinity
+
+      // Pass 1: respect minDaysBetweenSessions
+      for (const day of DAYS) {
+        const s = scoreDay(day, true)
+        if (s !== null && s > bestScore) { bestScore = s; bestDay = day }
+      }
+
+      // Pass 2: relax gap constraint if no valid day found (impossible given sessionsPerWeek)
+      if (!bestDay) {
+        bestScore = -Infinity
+        for (const day of DAYS) {
+          const s = scoreDay(day, false)
+          if (s !== null && s > bestScore) { bestScore = s; bestDay = day }
         }
       }
 
       if (bestDay) {
         assignments.push({ studentId: student.id, day: bestDay, dur })
-        placed++
       }
     }
   }
